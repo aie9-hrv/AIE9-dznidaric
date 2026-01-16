@@ -1,6 +1,47 @@
 import os
 from typing import List
 
+import requests
+from bs4 import BeautifulSoup
+
+class CustomWebLoader:
+    def __init__(self, urls: list[str]):
+        self.urls = urls
+        self.documents = []
+        # Header to mimic a browser and avoid being blocked
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        }
+
+    def load(self):
+        """Iterates through URLs and fetches content."""
+        session = requests.Session()
+        # Disables system proxy settings to avoid ProxyError
+        session.trust_env = False 
+        
+        for url in self.urls:
+            try:
+                response = session.get(url, headers=self.headers, timeout=10)
+                response.raise_for_status() # Raise error for bad status (404, 500)
+                
+                # Parse HTML and extract clean text
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Remove script and style elements from the text
+                for script_or_style in soup(["script", "style"]):
+                    script_or_style.decompose()
+
+                clean_text = soup.get_text(separator="\n", strip=True)
+                self.documents.append(clean_text)
+                
+            except Exception as e:
+                print(f"Failed to load {url}: {e}")
+
+    def load_documents(self):
+        """Matches your TextFileLoader signature."""
+        self.load()
+        return self.documents
+
 
 class TextFileLoader:
     def __init__(self, path: str, encoding: str = "utf-8"):
